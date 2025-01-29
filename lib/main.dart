@@ -4,6 +4,7 @@ import 'dart:math';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
+import 'finance_education.dart';
 
 void main() {
   runApp(const CreditScoreApp());
@@ -463,14 +464,34 @@ class _HomePageState extends State<HomePage> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: () {
-                          setState(() {
-                            userId = userIdController.text;
-                          });
-                          startMonitoring();
-                        },
-                        child: const Text('Start Monitoring'),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          ElevatedButton(
+                            onPressed: () {
+                              setState(() {
+                                userId = userIdController.text;
+                              });
+                              startMonitoring();
+                            },
+                            child: const Text('Start Monitoring'),
+                          ),
+                          ElevatedButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => FinanceEducationPage(
+                                    userId: userIdController.text.isEmpty
+                                        ? null
+                                        : userIdController.text,
+                                  ),
+                                ),
+                              );
+                            },
+                            child: const Text('Financial Education'),
+                          ),
+                        ],
                       ),
                     ],
                   ),
