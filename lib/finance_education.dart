@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 
 class Portfolio {
   final String userId;
@@ -54,7 +55,7 @@ class Asset {
 
   factory Asset.fromJson(Map<String, dynamic> json) => Asset(
         name: json['name'],
-        value: json['value'],
+        value: json['value'].toDouble(),
         type: json['type'],
       );
 }
@@ -78,8 +79,8 @@ class Liability {
 
   factory Liability.fromJson(Map<String, dynamic> json) => Liability(
         name: json['name'],
-        amount: json['amount'],
-        interestRate: json['interestRate'],
+        amount: json['amount'].toDouble(),
+        interestRate: json['interestRate'].toDouble(),
       );
 }
 
@@ -195,13 +196,15 @@ class _FinanceEducationPageState extends State<FinanceEducationPage>
   }
 
   void addAsset() {
-    if (_assetNameController.text.isEmpty || _assetValueController.text.isEmpty)
+    if (_assetNameController.text.isEmpty ||
+        _assetValueController.text.isEmpty) {
       return;
+    }
 
     setState(() {
       portfolio!.assets.add(Asset(
         name: _assetNameController.text,
-        value: double.parse(_assetValueController.text),
+        value: double.tryParse(_assetValueController.text) ?? 0.0,
         type: 'General',
       ));
       _assetNameController.clear();
@@ -213,13 +216,15 @@ class _FinanceEducationPageState extends State<FinanceEducationPage>
   void addLiability() {
     if (_liabilityNameController.text.isEmpty ||
         _liabilityAmountController.text.isEmpty ||
-        _liabilityInterestController.text.isEmpty) return;
+        _liabilityInterestController.text.isEmpty) {
+      return;
+    }
 
     setState(() {
       portfolio!.liabilities.add(Liability(
         name: _liabilityNameController.text,
-        amount: double.parse(_liabilityAmountController.text),
-        interestRate: double.parse(_liabilityInterestController.text),
+        amount: double.tryParse(_liabilityAmountController.text) ?? 0.0,
+        interestRate: double.tryParse(_liabilityInterestController.text) ?? 0.0,
       ));
       _liabilityNameController.clear();
       _liabilityAmountController.clear();
@@ -405,26 +410,31 @@ class _FinanceEducationPageState extends State<FinanceEducationPage>
         'title': 'Credit Report Basics',
         'description':
             'Learn how to read and understand your credit report, including what factors affect your score.',
+        'videoUrl': 'https://www.youtube.com/watch?v=71iaNlskCc0',
       },
       {
         'title': 'Debt Management Strategies',
         'description':
             'Explore different methods for managing and paying off debt effectively.',
+        'videoUrl': 'https://www.youtube.com/watch?v=J5KIc8Fzbz4',
       },
       {
         'title': 'Budgeting Fundamentals',
         'description':
             'Master the basics of creating and maintaining a budget that works for you.',
+        'videoUrl': 'https://www.youtube.com/watch?v=sVKQn2I4HDM',
       },
       {
         'title': 'Investment Basics',
         'description':
             'Understand the fundamentals of investing and growing your wealth.',
+        'videoUrl': 'https://www.youtube.com/watch?v=HNPbY6fSeo8',
       },
       {
         'title': 'Emergency Fund Planning',
         'description':
             'Learn how to build and maintain an emergency fund for financial security.',
+        'videoUrl': 'https://www.youtube.com/watch?v=g-hir-4WzfU',
       },
     ];
 
@@ -442,7 +452,15 @@ class _FinanceEducationPageState extends State<FinanceEducationPage>
             subtitle: Text(resource['description']!),
             trailing: const Icon(Icons.arrow_forward_ios),
             onTap: () {
-              // TODO: Implement resource detail view
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ResourceWebView(
+                    title: resource['title']!,
+                    url: resource['videoUrl']!,
+                  ),
+                ),
+              );
             },
           ),
         );
@@ -454,12 +472,12 @@ class _FinanceEducationPageState extends State<FinanceEducationPage>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Financial Education Center'),
+        title: const Text('Financial Education'),
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
             Tab(text: 'Portfolio'),
-            Tab(text: 'Credit Tips'),
+            Tab(text: 'Education'),
             Tab(text: 'Resources'),
           ],
         ),
@@ -474,4 +492,96 @@ class _FinanceEducationPageState extends State<FinanceEducationPage>
       ),
     );
   }
+}
+
+class ResourceWebView extends StatefulWidget {
+  final String title;
+  final String url;
+
+  const ResourceWebView({
+    super.key,
+    required this.title,
+    required this.url,
+  });
+
+  @override
+  State<ResourceWebView> createState() => _ResourceWebViewState();
+}
+
+class _ResourceWebViewState extends State<ResourceWebView> {
+  late final WebViewController controller;
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    controller = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setBackgroundColor(const Color(0x00000000))
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onProgress: (int progress) {
+            if (progress == 100) {
+              setState(() {
+                isLoading = false;
+              });
+            }
+          },
+          onPageStarted: (String url) {
+            setState(() {
+              isLoading = true;
+            });
+          },
+          onPageFinished: (String url) {
+            setState(() {
+              isLoading = false;
+            });
+          },
+          onWebResourceError: (WebResourceError error) {
+            setState(() {
+              isLoading = false;
+            });
+          },
+        ),
+      )
+      ..loadRequest(Uri.parse(widget.url));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.title),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () {
+              controller.reload();
+            },
+          ),
+        ],
+      ),
+      body: Stack(
+        children: [
+          WebViewWidget(controller: controller),
+          if (isLoading)
+            const Center(
+              child: CircularProgressIndicator(),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+void main() {
+  runApp(
+    MaterialApp(
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+        useMaterial3: true,
+      ),
+      home: const FinanceEducationPage(userId: 'user123'),
+    ),
+  );
 }
